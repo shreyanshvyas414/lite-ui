@@ -180,11 +180,21 @@ end
 
 local function setup_window_options(winid)
   local config = require("lite-ui.config")
+  local themes = require("lite-ui.themes")
 
   -- Apply user-configured window options
   for opt, value in pairs(config.options.select.win_options) do
     pcall(vim.api.nvim_set_option_value, opt, value, { win = winid })
   end
+
+  -- Apply themed highlight groups
+  pcall(vim.api.nvim_set_option_value, "winhighlight",
+    string.format("Normal:%s,FloatBorder:%s,FloatTitle:%s,CursorLine:%s",
+      themes.hl_groups.select.background,
+      themes.hl_groups.select.border,
+      themes.hl_groups.select.title,
+      themes.hl_groups.select.selected
+    ), { win = winid })
 
   -- Enable cursorline for visual feedback
   vim.wo[winid].cursorline = true
