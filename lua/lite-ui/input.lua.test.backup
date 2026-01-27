@@ -5,8 +5,6 @@ local state = {
   callback = nil,
   bufnr = nil,
   winid = nil,
-  original_winnr = nil,
-  original_bufnr = nil,
 }
 
 local function close_and_callback(result)
@@ -22,8 +20,6 @@ local function close_and_callback(result)
     pcall(vim.api.nvim_win_close, state.winid, true)
   end
   state.winid = nil
-  state.original_winnr = nil
-  state.original_bufnr = nil
 
   -- Call the callback if it exists
   if callback then
@@ -37,34 +33,32 @@ local function create_input_buffer(default_text)
   -- Create a scratch buffer (unlisted, temporary)
   local bufnr = vim.api.nvim_create_buf(false, true)
 
-  -- Set buffer options - use nofile instead of prompt to avoid % character
-  vim.bo[bufnr].buftype = "nofile"
-  vim.bo[bufnr].bufhidden = "wipe"
-  vim.bo[bufnr].swapfile = false
-  vim.bo[bufnr].filetype = "LiteUIInput"
-  
-  -- Make it modifiable
-  vim.bo[bufnr].modifiable = true
+  -- Set buffer options
+  vim.bo[bufnr].buftype = "nofile" -- Changed from "prompt" to avoid % character
+  vim.bo[bufnr].bufhidden = "wipe" -- Delete buffer when hidden
+  vim.bo[bufnr].filetype = "LiteUIInput" -- For custom highlighting if needed
+  vim.bo[bufnr].swapfile = false -- Disable swap file
 
   -- Set the default text if provided
   if default_text and default_text ~= "" then
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { default_text })
+    -- Move cursor to end of line in the buffer
+    vim.api.nvim_buf_call(bufnr, function()
+      vim.cmd("normal! $")
+    end)
   end
 
   return bufnr
 end
 
-local function calculate_window_config(prompt, default_text)
+local function calculate_window_config(prompt)
   local config = require("lite-ui.config")
   local width = vim.o.columns
   local height = vim.o.lines
 
-  -- Calculate window dimensions based on prompt and default text
+  -- Calculate window dimensions
   local prompt_width = vim.api.nvim_strwidth(prompt or "")
-  local default_width = vim.api.nvim_strwidth(default_text or "")
-  local content_width = math.max(prompt_width, default_width) + 10
-  
-  local min_width = math.max(config.options.input.min_width, content_width)
+  local min_width = math.max(config.options.input.min_width, prompt_width + 10)
   
   local max_width_value = config.options.input.max_width
   if max_width_value < 1 then
@@ -107,13 +101,13 @@ local function setup_keymaps(bufnr)
   -- Confirm on Enter (in both normal and insert mode)
   vim.keymap.set("n", "<CR>", function()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local result = lines[1] or ""
+    local result = table.concat(lines, "\n") -- Join all lines
     close_and_callback(result)
   end, { buffer = bufnr, nowait = true, desc = "Confirm input" })
 
   vim.keymap.set("i", "<CR>", function()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local result = lines[1] or ""
+    local result = table.concat(lines, "\n") -- Join all lines
     close_and_callback(result)
   end, { buffer = bufnr, nowait = true, desc = "Confirm input" })
 
@@ -166,20 +160,14 @@ function M.input(opts, on_confirm)
     return on_confirm(result)
   end
 
-  -- Save the original window and buffer to get the word under cursor
-  state.original_winnr = vim.api.nvim_get_current_win()
-  state.original_bufnr = vim.api.nvim_get_current_buf()
-
-  -- Get default text - check if we need to auto-detect from cursor word
+  -- Auto-detect default text for LSP rename if not provided
+  -- This handles cases where LSP doesn't send a default value
   local default_text = opts.default
-  
-  -- Auto-detect word under cursor if no default provided (for LSP rename)
   if (not default_text or default_text == "") and config.options.input.auto_detect_cword then
+    -- Check if this looks like an LSP rename (has "name" in prompt)
     local prompt_lower = (opts.prompt or ""):lower()
-    -- Check if this looks like a rename prompt
-    if prompt_lower:match("name") or prompt_lower:match("rename") or prompt_lower:match("symbol") then
-      -- Get word from the ORIGINAL buffer (before opening the input window)
-      vim.api.nvim_set_current_win(state.original_winnr)
+    if prompt_lower:match("name") or prompt_lower:match("rename") then
+      -- Get the word under cursor as default
       default_text = vim.fn.expand("<cword>")
     end
   end
@@ -192,26 +180,23 @@ function M.input(opts, on_confirm)
   -- Store the callback
   state.callback = on_confirm
 
-  -- Create buffer with the default text
+  -- Create buffer with auto-detected or provided default
   local bufnr = create_input_buffer(default_text)
   state.bufnr = bufnr
 
   -- Calculate window configuration
-  local win_config = calculate_window_config(opts.prompt, default_text)
+  local win_config = calculate_window_config(opts.prompt)
 
   -- Open the window
   local ok, winid = pcall(vim.api.nvim_open_win, bufnr, true, win_config)
   if not ok then
     -- Fallback if window creation fails
-    vim.api.nvim_set_current_win(state.original_winnr)
     local result = vim.fn.input({
       prompt = opts.prompt or "",
       default = default_text or "",
     })
     state.callback = nil
     state.bufnr = nil
-    state.original_winnr = nil
-    state.original_bufnr = nil
     return on_confirm(result)
   end
   
@@ -237,22 +222,15 @@ function M.input(opts, on_confirm)
   -- Set up autocmds
   setup_autocmds(bufnr)
 
-  -- Enter insert mode at the end of the line
+  -- Enter insert mode at the end of the line if configured
   if config.options.input.start_in_insert then
     vim.schedule(function()
-      -- Make sure we're still in the input window
+      -- Make sure we're in the right window
       if vim.api.nvim_win_is_valid(winid) then
         vim.api.nvim_set_current_win(winid)
-        
-        -- Get the current line length and position cursor at end
-        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-        if lines[1] then
-          local line_length = #lines[1]
-          vim.api.nvim_win_set_cursor(winid, {1, line_length})
-        end
-        
-        -- Start insert mode
-        vim.cmd("startinsert")
+        -- Move to end of line and enter insert mode
+        vim.cmd("normal! $")
+        vim.cmd("startinsert!")
       end
     end)
   end
