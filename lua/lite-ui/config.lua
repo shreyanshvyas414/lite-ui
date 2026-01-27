@@ -21,6 +21,8 @@ M.defaults = {
     prompt_prefix = "",
     -- Start in insert mode
     start_in_insert = true,
+    -- Auto-detect word under cursor as default for LSP rename (when default not provided)
+    auto_detect_cword = true,
     -- Override theme colors for input specifically (optional)
     theme_override = nil,
   },
