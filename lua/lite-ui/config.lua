@@ -1,6 +1,9 @@
 local M = {}
 
 M.defaults = {
+  -- Theme configuration
+  theme = "default", -- Can be: "default", "kanagawa", "github-dark", "catppuccin", "tokyonight", "gruvbox", "nord", "dracula", "onedark", "rose-pine", "nightfox", or custom table
+  
   input = {
     enabled = true,
     -- Window position: "cursor" or "editor"
@@ -18,6 +21,8 @@ M.defaults = {
     prompt_prefix = "",
     -- Start in insert mode
     start_in_insert = true,
+    -- Override theme colors for input specifically (optional)
+    theme_override = nil,
   },
   select = {
     enabled = true,
@@ -36,6 +41,8 @@ M.defaults = {
     show_numbers = true,
     -- Format for numbered items (default: "%d. %s")
     number_format = "%d. %s",
+    -- Override theme colors for select specifically (optional)
+    theme_override = nil,
   },
   -- Global settings
   border_chars = {
@@ -51,6 +58,18 @@ M.options = {}
 
 function M.setup(user_config)
   M.options = vim.tbl_deep_extend("force", M.defaults, user_config or {})
+  
+  -- Apply theme if specified
+  local themes = require("lite-ui.themes")
+  
+  if type(M.options.theme) == "string" then
+    -- Apply named theme
+    themes.apply_theme(M.options.theme)
+  elseif type(M.options.theme) == "table" then
+    -- Apply custom theme
+    themes.add_theme("_custom", M.options.theme)
+    themes.apply_theme("_custom")
+  end
 end
 
 -- Helper to get border chars

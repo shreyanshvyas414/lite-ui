@@ -185,6 +185,15 @@ function M.input(opts, on_confirm)
     pcall(vim.api.nvim_set_option_value, opt, value, { win = winid })
   end
 
+  -- Apply themed highlight groups
+  local themes = require("lite-ui.themes")
+  pcall(vim.api.nvim_set_option_value, "winhighlight", 
+    string.format("Normal:%s,FloatBorder:%s,FloatTitle:%s",
+      themes.hl_groups.input.background,
+      themes.hl_groups.input.border,
+      themes.hl_groups.input.title
+    ), { win = winid })
+
   -- Set up keymaps
   setup_keymaps(bufnr)
 

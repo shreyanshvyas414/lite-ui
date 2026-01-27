@@ -1,15 +1,108 @@
 # lite-ui.nvim
 
-A minimal, fast, dependency-free alternative to dressing.nvim for modern Neovim UI. Provides beautiful, customizable floating windows for `vim.ui.input` and `vim.ui.select`.
+A minimal, fast, dependency-free alternative to dressing.nvim for modern Neovim UI. Provides beautiful, customizable floating windows for `vim.ui.input` and `vim.ui.select` with **built-in themes**!
 
 ## ✨ Features
 
 - 🚀 **Fast & Lightweight**: Zero dependencies, pure Lua implementation
-- 🎨 **Customizable**: Configure borders, positioning, colors, and more
+- 🎨 **Beautiful Themes**: 11+ pre-built themes (Kanagawa, GitHub Dark, Catppuccin, Tokyo Night, and more!)
+- 🎯 **Custom Themes**: Easy custom theme creation
 - ⌨️  **Intuitive Keymaps**: Vim-like navigation with number quick-selection
 - 🔧 **Drop-in Replacement**: Works with any plugin that uses `vim.ui.*`
 - 🎯 **Smart Positioning**: Cursor-relative or editor-centered windows
 - 📦 **No Configuration Required**: Sensible defaults out of the box
+
+## 📸 Theme Showcase
+
+<details>
+<summary>🌊 Kanagawa</summary>
+
+```lua
+require("lite-ui").setup({ theme = "kanagawa" })
+```
+Deep blues and warm accents inspired by the iconic Japanese wave painting.
+</details>
+
+<details>
+<summary>🐙 GitHub Dark</summary>
+
+```lua
+require("lite-ui").setup({ theme = "github-dark" })
+```
+Clean and professional, matching GitHub's dark interface.
+</details>
+
+<details>
+<summary>🌸 Catppuccin</summary>
+
+```lua
+require("lite-ui").setup({ theme = "catppuccin" })
+```
+Soothing pastel colors that are easy on the eyes.
+</details>
+
+<details>
+<summary>🌃 Tokyo Night</summary>
+
+```lua
+require("lite-ui").setup({ theme = "tokyonight" })
+```
+Vibrant night-time city aesthetic with electric blues.
+</details>
+
+<details>
+<summary>🍂 Gruvbox</summary>
+
+```lua
+require("lite-ui").setup({ theme = "gruvbox" })
+```
+Retro warm colors with high contrast.
+</details>
+
+<details>
+<summary>❄️ Nord</summary>
+
+```lua
+require("lite-ui").setup({ theme = "nord" })
+```
+Arctic, bluish-grey color palette.
+</details>
+
+<details>
+<summary>🧛 Dracula</summary>
+
+```lua
+require("lite-ui").setup({ theme = "dracula" })
+```
+Dark theme with vibrant, punchy colors.
+</details>
+
+<details>
+<summary>🌙 Onedark</summary>
+
+```lua
+require("lite-ui").setup({ theme = "onedark" })
+```
+Inspired by Atom's One Dark theme.
+</details>
+
+<details>
+<summary>🌹 Rose Pine</summary>
+
+```lua
+require("lite-ui").setup({ theme = "rose-pine" })
+```
+Natural pine, faux fur, and a bit of soho vibes.
+</details>
+
+<details>
+<summary>🦊 Nightfox</summary>
+
+```lua
+require("lite-ui").setup({ theme = "nightfox" })
+```
+Highly accessible with vibrant colors.
+</details>
 
 ## 📦 Installation
 
@@ -19,7 +112,9 @@ A minimal, fast, dependency-free alternative to dressing.nvim for modern Neovim 
 {
   "shreyanshvyas414/lite-ui.nvim",
   config = function()
-    require("lite-ui").setup()
+    require("lite-ui").setup({
+      theme = "kanagawa" -- or any other theme!
+    })
   end
 }
 ```
@@ -30,7 +125,7 @@ A minimal, fast, dependency-free alternative to dressing.nvim for modern Neovim 
 use {
   "shreyanshvyas414/lite-ui.nvim",
   config = function()
-    require("lite-ui").setup()
+    require("lite-ui").setup({ theme = "catppuccin" })
   end
 }
 ```
@@ -43,23 +138,27 @@ Plug 'shreyanshvyas414/lite-ui.nvim'
 
 Then in your init.lua:
 ```lua
-require("lite-ui").setup()
+require("lite-ui").setup({ theme = "tokyonight" })
 ```
 
 ## 🎯 Usage
 
 Just call `setup()` in your config - lite-ui will automatically enhance `vim.ui.input` and `vim.ui.select` for all plugins that use them (Telescope, LSP rename, etc.).
 
-### Basic Setup
+### Basic Setup (with theme)
 
 ```lua
-require("lite-ui").setup()
+require("lite-ui").setup({
+  theme = "kanagawa" -- Choose your theme!
+})
 ```
 
 ### Custom Configuration
 
 ```lua
 require("lite-ui").setup({
+  theme = "github-dark", -- Choose a theme
+  
   input = {
     enabled = true,
     relative = "cursor",      -- "cursor" or "editor"
@@ -102,6 +201,104 @@ require("lite-ui").setup({
 - `J` / `K` - Jump 5 lines
 - `gg` / `G` - Jump to top/bottom
 - `1-9` - Quick select items 1-9
+
+## 🎨 Theming
+
+### Available Themes
+
+lite-ui comes with 11 beautiful pre-built themes:
+- `default` - Uses Neovim's default colors
+- `kanagawa` - Deep blues and warm accents
+- `github-dark` - Clean GitHub dark interface
+- `catppuccin` - Soothing pastel colors
+- `tokyonight` - Vibrant night-time aesthetic
+- `gruvbox` - Retro warm colors
+- `nord` - Arctic bluish-grey palette
+- `dracula` - Dark with vibrant colors
+- `onedark` - Inspired by Atom's One Dark
+- `rose-pine` - Natural pine and soho vibes
+- `nightfox` - Highly accessible with vibrant colors
+
+### Using Themes
+
+```lua
+-- Set theme in setup
+require("lite-ui").setup({
+  theme = "kanagawa"
+})
+```
+
+### Switching Themes Dynamically
+
+```lua
+-- List available themes
+:LiteUITheme
+
+-- Switch to a different theme
+:LiteUITheme tokyonight
+```
+
+### Testing Themes
+
+Try out the UI with a demo:
+```lua
+:LiteUIDemo
+```
+
+### Creating Custom Themes
+
+You can create your own themes! Each theme defines colors for different UI elements:
+
+```lua
+require("lite-ui").setup({
+  theme = {
+    -- Color definitions (can be hex or highlight group names)
+    border = { fg = "#89B4FA", bg = "#1E1E2E" },
+    background = { bg = "#1E1E2E" },
+    title = { fg = "#CBA6F7", bold = true },
+    selected = { fg = "#CDD6F4", bg = "#45475A", bold = true },
+    prompt = { fg = "#F5C2E7", bold = true },
+    input_text = { fg = "#CDD6F4", bg = "#1E1E2E" },
+    select_text = { fg = "#CDD6F4", bg = "#1E1E2E" },
+    number = { fg = "#A6E3A1", bg = "#1E1E2E" },
+  }
+})
+```
+
+Or add it permanently:
+
+```lua
+local lite_ui = require("lite-ui")
+
+-- Add custom theme
+lite_ui.themes.add_theme("my_theme", {
+  border = { fg = "#FF0000" },
+  background = { bg = "#000000" },
+  -- ... other colors
+})
+
+-- Use it
+lite_ui.setup({ theme = "my_theme" })
+```
+
+### Theme Definition Reference
+
+```lua
+{
+  border = "FloatBorder",           -- Border color (string or table)
+  background = "NormalFloat",        -- Background color
+  title = "FloatTitle",              -- Title/prompt color
+  selected = "PmenuSel",             -- Selected item color (select only)
+  prompt = "Title",                  -- Prompt text color (input only)
+  input_text = "Normal",             -- Input text color
+  select_text = "Normal",            -- Select item text color
+  number = "LineNr",                 -- Item number color (select only)
+}
+```
+
+You can use:
+- Highlight group names (strings): `"Normal"`, `"Title"`, etc.
+- Direct color definitions (tables): `{ fg = "#FFFFFF", bg = "#000000", bold = true }`
 
 ## 🎨 Border Styles
 
