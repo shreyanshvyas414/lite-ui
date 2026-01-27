@@ -34,13 +34,18 @@ local function create_input_buffer(default_text)
   local bufnr = vim.api.nvim_create_buf(false, true)
 
   -- Set buffer options
-  vim.bo[bufnr].buftype = "prompt" -- Special buffer type for input
+  vim.bo[bufnr].buftype = "nofile" -- Changed from "prompt" to avoid % character
   vim.bo[bufnr].bufhidden = "wipe" -- Delete buffer when hidden
   vim.bo[bufnr].filetype = "LiteUIInput" -- For custom highlighting if needed
+  vim.bo[bufnr].swapfile = false -- Disable swap file
 
   -- Set the default text if provided
   if default_text and default_text ~= "" then
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { default_text })
+    -- Move cursor to end of line in the buffer
+    vim.api.nvim_buf_call(bufnr, function()
+      vim.cmd("normal! $")
+    end)
   end
 
   return bufnr
@@ -96,13 +101,13 @@ local function setup_keymaps(bufnr)
   -- Confirm on Enter (in both normal and insert mode)
   vim.keymap.set("n", "<CR>", function()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local result = lines[1] or ""
+    local result = table.concat(lines, "\n") -- Join all lines
     close_and_callback(result)
   end, { buffer = bufnr, nowait = true, desc = "Confirm input" })
 
   vim.keymap.set("i", "<CR>", function()
     local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local result = lines[1] or ""
+    local result = table.concat(lines, "\n") -- Join all lines
     close_and_callback(result)
   end, { buffer = bufnr, nowait = true, desc = "Confirm input" })
 
@@ -112,6 +117,11 @@ local function setup_keymaps(bufnr)
   end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
 
   vim.keymap.set("i", "<Esc>", function()
+    close_and_callback(nil)
+  end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
+
+  -- Cancel on Ctrl-C (common in many editors)
+  vim.keymap.set({ "n", "i" }, "<C-c>", function()
     close_and_callback(nil)
   end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
 
@@ -150,6 +160,18 @@ function M.input(opts, on_confirm)
     return on_confirm(result)
   end
 
+  -- Auto-detect default text for LSP rename if not provided
+  -- This handles cases where LSP doesn't send a default value
+  local default_text = opts.default
+  if (not default_text or default_text == "") and config.options.input.auto_detect_cword then
+    -- Check if this looks like an LSP rename (has "name" in prompt)
+    local prompt_lower = (opts.prompt or ""):lower()
+    if prompt_lower:match("name") or prompt_lower:match("rename") then
+      -- Get the word under cursor as default
+      default_text = vim.fn.expand("<cword>")
+    end
+  end
+
   -- Close any existing input window
   if state.winid and vim.api.nvim_win_is_valid(state.winid) then
     pcall(vim.api.nvim_win_close, state.winid, true)
@@ -158,8 +180,8 @@ function M.input(opts, on_confirm)
   -- Store the callback
   state.callback = on_confirm
 
-  -- Create buffer
-  local bufnr = create_input_buffer(opts.default)
+  -- Create buffer with auto-detected or provided default
+  local bufnr = create_input_buffer(default_text)
   state.bufnr = bufnr
 
   -- Calculate window configuration
@@ -171,7 +193,7 @@ function M.input(opts, on_confirm)
     -- Fallback if window creation fails
     local result = vim.fn.input({
       prompt = opts.prompt or "",
-      default = opts.default or "",
+      default = default_text or "",
     })
     state.callback = nil
     state.bufnr = nil
@@ -202,7 +224,15 @@ function M.input(opts, on_confirm)
 
   -- Enter insert mode at the end of the line if configured
   if config.options.input.start_in_insert then
-    vim.cmd("startinsert!")
+    vim.schedule(function()
+      -- Make sure we're in the right window
+      if vim.api.nvim_win_is_valid(winid) then
+        vim.api.nvim_set_current_win(winid)
+        -- Move to end of line and enter insert mode
+        vim.cmd("normal! $")
+        vim.cmd("startinsert!")
+      end
+    end)
   end
 end
 
