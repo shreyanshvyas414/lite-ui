@@ -1,6 +1,94 @@
+# lite-ui.nvim .gitignore
+# Production-ready ignore file for Neovim plugin
+
+# ============================================
+# macOS System Files (CRITICAL)
+# ============================================
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ============================================
+# Windows System Files
+# ============================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# Linux System Files
+# ============================================
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# Neovim / Vim
+# ============================================
 *.swp
 *.swo
-*~
+*.swn
+.netrwhist
+tags
+.tags
+
+# ============================================
+# Development & Cleanup Files (DO NOT COMMIT)
+# ============================================
+# Cleanup scripts and internal documentation
+cleanup-*.sh
+cleanup-*.md
+CLEANUP*.md
+*CLEANUP*.md
+FIXES_SUMMARY.md
+INDEX.md
+START_HERE.txt
+QUICK_*.md
+REPO_*.md
+THEMING_UPDATE.md
+
+# Example/template files
+example-*.lua
+example-*.md
+template-*.lua
+
+# ============================================
+# Testing & Development
+# ============================================
+test/
+tests/
+spec/
+tmp/
+temp/
+cache/
 *.backup
 *.bak
+*.old
+
+# ============================================
+# IDE Files
+# ============================================
+.vscode/
+.idea/
+*.iml
+
+# ============================================
+# Logs
+# ============================================
+*.log
+npm-debug.log*
+
