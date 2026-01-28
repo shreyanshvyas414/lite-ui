@@ -1,31 +1,22 @@
 local M = {}
 
--- Module level state to track the active input session
+-- Module level state
 local state = {
   callback = nil,
   bufnr = nil,
   winid = nil,
-  original_winnr = nil,
-  original_bufnr = nil,
 }
 
 local function close_and_callback(result)
-  -- Get the callback before clearing state
   local callback = state.callback
-
-  -- Clear state first
   state.callback = nil
   state.bufnr = nil
-
-  -- Close window if it's still valid
+  
   if state.winid and vim.api.nvim_win_is_valid(state.winid) then
     pcall(vim.api.nvim_win_close, state.winid, true)
   end
   state.winid = nil
-  state.original_winnr = nil
-  state.original_bufnr = nil
-
-  -- Call the callback if it exists
+  
   if callback then
     vim.schedule(function()
       callback(result)
@@ -33,225 +24,134 @@ local function close_and_callback(result)
   end
 end
 
-local function create_input_buffer(default_text)
-  -- Create a scratch buffer (unlisted, temporary)
-  local bufnr = vim.api.nvim_create_buf(false, true)
-
-  -- Set buffer options - use nofile instead of prompt to avoid % character
-  vim.bo[bufnr].buftype = "nofile"
-  vim.bo[bufnr].bufhidden = "wipe"
-  vim.bo[bufnr].swapfile = false
-  vim.bo[bufnr].filetype = "LiteUIInput"
-  
-  -- Make it modifiable
-  vim.bo[bufnr].modifiable = true
-
-  -- Set the default text if provided
-  if default_text and default_text ~= "" then
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { default_text })
-  end
-
-  return bufnr
-end
-
-local function calculate_window_config(prompt, default_text)
-  local config = require("lite-ui.config")
-  local width = vim.o.columns
-  local height = vim.o.lines
-
-  -- Calculate window dimensions based on prompt and default text
-  local prompt_width = vim.api.nvim_strwidth(prompt or "")
-  local default_width = vim.api.nvim_strwidth(default_text or "")
-  local content_width = math.max(prompt_width, default_width) + 10
-  
-  local min_width = math.max(config.options.input.min_width, content_width)
-  
-  local max_width_value = config.options.input.max_width
-  if max_width_value < 1 then
-    max_width_value = math.floor(width * max_width_value)
-  end
-  
-  local win_width = math.min(min_width, max_width_value)
-  local win_height = 1
-
-  -- Get border configuration
-  local border = config.get_border(config.options.input.border)
-
-  -- Position based on config
-  local win_config = {
-    relative = config.options.input.relative,
-    width = win_width,
-    height = win_height,
-    style = "minimal",
-    border = border,
-    title = prompt and (" " .. prompt .. " ") or nil,
-    title_pos = "left",
-  }
-
-  -- Calculate position based on relative mode
-  if config.options.input.relative == "cursor" then
-    win_config.row = 1 -- 1 line below cursor
-    win_config.col = 0 -- Aligned with cursor
-  else
-    -- Centered in editor
-    local row = math.floor((height - win_height) / 2) - 1
-    local col = math.floor((width - win_width) / 2)
-    win_config.row = row
-    win_config.col = col
-  end
-
-  return win_config
-end
-
-local function setup_keymaps(bufnr)
-  -- Confirm on Enter (in both normal and insert mode)
-  vim.keymap.set("n", "<CR>", function()
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local result = lines[1] or ""
-    close_and_callback(result)
-  end, { buffer = bufnr, nowait = true, desc = "Confirm input" })
-
-  vim.keymap.set("i", "<CR>", function()
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local result = lines[1] or ""
-    close_and_callback(result)
-  end, { buffer = bufnr, nowait = true, desc = "Confirm input" })
-
-  -- Cancel on Escape (in both modes)
-  vim.keymap.set("n", "<Esc>", function()
-    close_and_callback(nil)
-  end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
-
-  vim.keymap.set("i", "<Esc>", function()
-    close_and_callback(nil)
-  end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
-
-  -- Cancel on Ctrl-C (common in many editors)
-  vim.keymap.set({ "n", "i" }, "<C-c>", function()
-    close_and_callback(nil)
-  end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
-
-  -- Cancel on quit (normal mode only)
-  vim.keymap.set("n", "q", function()
-    close_and_callback(nil)
-  end, { buffer = bufnr, nowait = true, desc = "Cancel input" })
-end
-
-local function setup_autocmds(bufnr)
-  -- Cancel if user leaves the buffer
-  vim.api.nvim_create_autocmd("BufLeave", {
-    buffer = bufnr,
-    once = true,
-    callback = function()
-      -- Only cancel if callback still exists (not already called)
-      if state.callback then
-        close_and_callback(nil)
-      end
-    end,
-  })
-end
-
 function M.input(opts, on_confirm)
   opts = opts or {}
   local config = require("lite-ui.config")
 
-  -- Check if input is enabled
   if not config.options.input.enabled then
-    -- Fall back to default vim.ui.input
     local result = vim.fn.input({
       prompt = opts.prompt or "",
       default = opts.default or "",
-      completion = opts.completion,
     })
     return on_confirm(result)
   end
 
-  -- Save the original window and buffer to get the word under cursor
-  state.original_winnr = vim.api.nvim_get_current_win()
-  state.original_bufnr = vim.api.nvim_get_current_buf()
-
-  -- Get default text - check if we need to auto-detect from cursor word
-  local default_text = opts.default
+  -- CRITICAL: Get word under cursor BEFORE opening any window
+  -- This must happen in the original buffer context
+  local default_text = opts.default or ""
   
-  -- Auto-detect word under cursor if no default provided (for LSP rename)
-  if (not default_text or default_text == "") and config.options.input.auto_detect_cword then
+  if default_text == "" and config.options.input.auto_detect_cword then
     local prompt_lower = (opts.prompt or ""):lower()
-    -- Check if this looks like a rename prompt
-    if prompt_lower:match("name") or prompt_lower:match("rename") or prompt_lower:match("symbol") then
-      -- Get word from the ORIGINAL buffer (before opening the input window)
-      vim.api.nvim_set_current_win(state.original_winnr)
+    if prompt_lower:match("name") or prompt_lower:match("rename") then
+      -- Get word from current position
       default_text = vim.fn.expand("<cword>")
     end
   end
 
-  -- Close any existing input window
+  -- Close any existing window
   if state.winid and vim.api.nvim_win_is_valid(state.winid) then
     pcall(vim.api.nvim_win_close, state.winid, true)
   end
 
-  -- Store the callback
   state.callback = on_confirm
 
-  -- Create buffer with the default text
-  local bufnr = create_input_buffer(default_text)
+  -- Create buffer - MUST be nofile, NOT prompt
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.bo[bufnr].buftype = "nofile"  -- ← THIS IS CRITICAL - NO "prompt"!
+  vim.bo[bufnr].bufhidden = "wipe"
+  vim.bo[bufnr].swapfile = false
+  vim.bo[bufnr].modifiable = true
+  
+  -- Set the text
+  if default_text ~= "" then
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { default_text })
+  end
+  
   state.bufnr = bufnr
 
-  -- Calculate window configuration
-  local win_config = calculate_window_config(opts.prompt, default_text)
+  -- Window config
+  local width = vim.o.columns
+  local height = vim.o.lines
+  local win_width = math.min(60, math.floor(width * 0.9))
+  local win_height = 1
+  
+  local border = config.get_border(config.options.input.border)
+  
+  local win_config = {
+    relative = "editor",
+    width = win_width,
+    height = win_height,
+    row = math.floor((height - win_height) / 2),
+    col = math.floor((width - win_width) / 2),
+    style = "minimal",
+    border = border,
+    title = opts.prompt and (" " .. opts.prompt .. " ") or nil,
+    title_pos = "left",
+  }
 
-  -- Open the window
+  -- Open window
   local ok, winid = pcall(vim.api.nvim_open_win, bufnr, true, win_config)
   if not ok then
-    -- Fallback if window creation fails
-    vim.api.nvim_set_current_win(state.original_winnr)
     local result = vim.fn.input({
       prompt = opts.prompt or "",
-      default = default_text or "",
+      default = default_text,
     })
     state.callback = nil
     state.bufnr = nil
-    state.original_winnr = nil
-    state.original_bufnr = nil
     return on_confirm(result)
   end
   
   state.winid = winid
 
-  -- Apply window options from config
-  for opt, value in pairs(config.options.input.win_options) do
-    pcall(vim.api.nvim_set_option_value, opt, value, { win = winid })
-  end
-
-  -- Apply themed highlight groups
+  -- Apply highlights
   local themes = require("lite-ui.themes")
-  pcall(vim.api.nvim_set_option_value, "winhighlight", 
+  pcall(vim.api.nvim_set_option_value, "winhighlight",
     string.format("Normal:%s,FloatBorder:%s,FloatTitle:%s",
       themes.hl_groups.input.background,
       themes.hl_groups.input.border,
       themes.hl_groups.input.title
     ), { win = winid })
 
-  -- Set up keymaps
-  setup_keymaps(bufnr)
+  -- Keymaps
+  vim.keymap.set({"n", "i"}, "<CR>", function()
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    close_and_callback(lines[1] or "")
+  end, { buffer = bufnr, nowait = true })
 
-  -- Set up autocmds
-  setup_autocmds(bufnr)
+  vim.keymap.set({"n", "i"}, "<Esc>", function()
+    close_and_callback(nil)
+  end, { buffer = bufnr, nowait = true })
 
-  -- Enter insert mode at the end of the line
+  vim.keymap.set("n", "q", function()
+    close_and_callback(nil)
+  end, { buffer = bufnr, nowait = true })
+
+  vim.keymap.set({"n", "i"}, "<C-c>", function()
+    close_and_callback(nil)
+  end, { buffer = bufnr, nowait = true })
+
+  -- Auto-cancel on buffer leave
+  vim.api.nvim_create_autocmd("BufLeave", {
+    buffer = bufnr,
+    once = true,
+    callback = function()
+      if state.callback then
+        close_and_callback(nil)
+      end
+    end,
+  })
+
+  -- Position cursor and enter insert mode
   if config.options.input.start_in_insert then
     vim.schedule(function()
-      -- Make sure we're still in the input window
       if vim.api.nvim_win_is_valid(winid) then
         vim.api.nvim_set_current_win(winid)
         
-        -- Get the current line length and position cursor at end
-        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-        if lines[1] then
-          local line_length = #lines[1]
-          vim.api.nvim_win_set_cursor(winid, {1, line_length})
+        -- Move cursor to end of text
+        if default_text ~= "" then
+          vim.api.nvim_win_set_cursor(winid, {1, #default_text})
         end
         
-        -- Start insert mode
         vim.cmd("startinsert")
       end
     end)
