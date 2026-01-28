@@ -92,21 +92,34 @@ function M.input(opts, on_confirm)
   
   local border = config.get_border(config.options.input.border)
   
+  -- Get positioning config
+  local relative_pos = config.options.input.relative or "cursor"
+  
   -- CRITICAL: Position dialog properly for LSP rename
   -- Position ABOVE cursor (row = -2) so it doesn't cover the symbol being renamed
   -- This ensures LSP can still "see" the symbol under cursor in original buffer
   local win_config = {
-    relative = "cursor",  -- Position relative to cursor
+    relative = relative_pos,  -- Position relative to cursor or editor
     width = win_width,
     height = win_height,
-    row = -2,  -- Above cursor (negative moves up)
-    col = 0,   -- Left-aligned with cursor
     style = "minimal",
     border = border,
     title = opts.prompt and (" " .. opts.prompt .. " ") or nil,
     title_pos = "left",
     noautocmd = true,
   }
+
+  -- Set position based on relative setting
+  if relative_pos == "cursor" then
+    win_config.row = -2  -- Above cursor (negative moves up)
+    win_config.col = 0   -- Left-aligned with cursor
+  else
+    -- Editor-relative positioning (centered)
+    local row = math.floor((height - win_height) / 2) - 1
+    local col = math.floor((width - win_width) / 2)
+    win_config.row = row
+    win_config.col = col
+  end
 
   -- Open window
   local winid = vim.api.nvim_open_win(bufnr, true, win_config)
