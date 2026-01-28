@@ -1,5 +1,6 @@
 local M = {}
 
+-- Lazy loading support: if called before other modules are loaded, defer setup
 local config = require("lite-ui.config")
 local themes = require("lite-ui.themes")
 

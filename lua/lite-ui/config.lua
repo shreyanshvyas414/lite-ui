@@ -2,7 +2,7 @@ local M = {}
 
 M.defaults = {
   -- Theme configuration
-  theme = "default", -- Can be: "default", "kanagawa", "github-dark", "catppuccin", "tokyonight", "gruvbox", "nord", "dracula", "onedark", "rose-pine", "nightfox", or custom table
+  theme = "default", -- Can be: "default", "kanagawa", "github-dark", "catppuccin", "tokyonight", "gruvbox", "nord", "dracula", "onedark", "rose-pine", or custom table
   
   input = {
     enabled = true,
@@ -50,7 +50,7 @@ M.defaults = {
     -- Override theme colors for select specifically (optional)
     theme_override = nil,
   },
-  -- Global settings
+  -- Global settings - Using proper UTF-8 box drawing characters
   border_chars = {
     rounded = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
     single = { "┌", "─", "┐", "│", "┘", "─", "└", "│" },
