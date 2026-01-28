@@ -45,10 +45,12 @@ function M.input(opts, on_confirm)
   -- Get default text - either from opts or from cursor word
   local default_text = opts.default or ""
   
-  -- Auto-detect word under cursor for LSP rename
+  -- CRITICAL FIX: Auto-detect word under cursor for LSP rename
+  -- This is what gets PREFILLED in the dialog (fixing the empty % issue)
   if (not default_text or default_text == "") and config.options.input.auto_detect_cword then
     local prompt_lower = (opts.prompt or ""):lower()
-    if prompt_lower:match("name") or prompt_lower:match("rename") then
+    -- Match various rename prompts: "Rename", "Renamed to", "New Name", etc.
+    if prompt_lower:match("rename") or prompt_lower:match("new name") or prompt_lower:match("name to") then
       default_text = vim.fn.expand("<cword>")
     end
   end
@@ -62,16 +64,22 @@ function M.input(opts, on_confirm)
   state.callback = on_confirm
 
   -- Create buffer (CRITICAL: use "nofile" NOT "prompt"!)
+  -- The buftype MUST be "nofile" for LSP rename to work properly
   local bufnr = vim.api.nvim_create_buf(false, true)
   state.bufnr = bufnr
   
-  -- Buffer options - LINE 60 IS HERE
-  vim.bo[bufnr].buftype = "nofile"  -- THIS MUST BE "nofile" NOT "prompt"
+  -- CRITICAL: Buffer options
+  -- Using "nofile" allows vim.lsp.buf.rename() to communicate properly
+  -- If buftype="prompt", it interferes with LSP's ability to detect the buffer
+  vim.bo[bufnr].buftype = "nofile"  -- CRITICAL: MUST be "nofile" for LSP rename!
   vim.bo[bufnr].bufhidden = "wipe"
   vim.bo[bufnr].swapfile = false
   vim.bo[bufnr].modifiable = true
+  vim.bo[bufnr].undofile = false
+  vim.bo[bufnr].filetype = "LiteUIInput"
   
-  -- Set default text
+  -- Set default text - this is what shows PREFILLED in the dialog
+  -- This fixes the "empty % placeholder" issue
   if default_text and default_text ~= "" then
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { default_text })
   end
@@ -84,12 +92,15 @@ function M.input(opts, on_confirm)
   
   local border = config.get_border(config.options.input.border)
   
+  -- CRITICAL: Position dialog properly for LSP rename
+  -- Position ABOVE cursor (row = -2) so it doesn't cover the symbol being renamed
+  -- This ensures LSP can still "see" the symbol under cursor in original buffer
   local win_config = {
-    relative = "editor",
+    relative = "cursor",  -- Position relative to cursor
     width = win_width,
     height = win_height,
-    row = math.floor((height - win_height) / 2),
-    col = math.floor((width - win_width) / 2),
+    row = -2,  -- Above cursor (negative moves up)
+    col = 0,   -- Left-aligned with cursor
     style = "minimal",
     border = border,
     title = opts.prompt and (" " .. opts.prompt .. " ") or nil,
@@ -146,14 +157,18 @@ function M.input(opts, on_confirm)
       return
     end
     
-    -- Set cursor to end of text
+    -- Set cursor to end of text so user can edit
     if default_text and default_text ~= "" then
+      -- Place cursor at end of default text
       vim.api.nvim_win_set_cursor(winid, {1, #default_text})
+    else
+      -- Empty text, place at beginning
+      vim.api.nvim_win_set_cursor(winid, {1, 0})
     end
     
-    -- Enter insert mode
+    -- Enter insert mode to allow editing
     if config.options.input.start_in_insert then
-      vim.cmd("startinsert")
+      vim.cmd("startinsert!")  -- Using startinsert! to append after text
     end
   end)
 end
