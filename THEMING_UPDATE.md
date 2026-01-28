@@ -1,3 +1,4 @@
+
 # lite-ui.nvim - Theming Update Summary
 
 ## 🎨 New Theming System
@@ -358,4 +359,4 @@ Want to add a theme?
 
 ---
 
-Made with 💙 by the lite-ui community
+Made with 💙
