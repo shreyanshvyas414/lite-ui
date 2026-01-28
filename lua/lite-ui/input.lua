@@ -33,11 +33,12 @@ function M.input(opts, on_confirm)
 
   -- Fallback to default if disabled
   if not config.options.input.enabled then
-    vim.fn.input({
+    local result = vim.fn.input({
       prompt = opts.prompt or "",
       default = opts.default or "",
       completion = opts.completion,
-    }, on_confirm)
+    })
+    on_confirm(result)
     return
   end
 
@@ -60,12 +61,12 @@ function M.input(opts, on_confirm)
   -- Store callback
   state.callback = on_confirm
 
-  -- Create buffer (key: use nofile, NOT prompt!)
+  -- Create buffer (CRITICAL: use "nofile" NOT "prompt"!)
   local bufnr = vim.api.nvim_create_buf(false, true)
   state.bufnr = bufnr
   
-  -- Buffer options - THIS IS CRITICAL
-  vim.bo[bufnr].buftype = "nofile"  -- NOT "prompt"!
+  -- Buffer options - LINE 60 IS HERE
+  vim.bo[bufnr].buftype = "nofile"  -- THIS MUST BE "nofile" NOT "prompt"
   vim.bo[bufnr].bufhidden = "wipe"
   vim.bo[bufnr].swapfile = false
   vim.bo[bufnr].modifiable = true
