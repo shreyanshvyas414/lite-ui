@@ -85,9 +85,12 @@ local function calculate_window_config(prompt, items_count, formatted_lines)
   -- Get border configuration
   local border = config.get_border(config.options.select.border)
 
+  -- Get relative positioning from config
+  local relative_pos = config.options.select.relative or "editor"
+
   -- Position based on config
   local win_config = {
-    relative = config.options.select.relative,
+    relative = relative_pos,
     width = win_width,
     height = win_height,
     style = "minimal",
@@ -96,12 +99,12 @@ local function calculate_window_config(prompt, items_count, formatted_lines)
     title_pos = "left",
   }
 
-  -- Calculate position
-  if config.options.select.relative == "cursor" then
+  -- Calculate position based on relative setting
+  if relative_pos == "cursor" then
     win_config.row = 1
     win_config.col = 0
   else
-    -- Centered in editor
+    -- Editor-relative (centered)
     local row = math.floor((height - win_height) / 2) - 1
     local col = math.floor((width - win_width) / 2)
     win_config.row = row
