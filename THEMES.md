@@ -382,4 +382,4 @@ Have a beautiful theme? Consider contributing it to lite-ui!
 
 ---
 
-Made with 💙 by the lite-ui community
+Made with 💙
