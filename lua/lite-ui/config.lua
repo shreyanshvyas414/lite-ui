@@ -7,6 +7,7 @@ M.defaults = {
   input = {
     enabled = true,
     -- Window position: "cursor" or "editor"
+    -- For LSP rename, use "cursor" so dialog appears above the symbol
     relative = "cursor",
     -- Preferred border style: "rounded", "single", "double", "solid", "shadow", or custom array
     border = "rounded",
@@ -21,7 +22,10 @@ M.defaults = {
     prompt_prefix = "",
     -- Start in insert mode
     start_in_insert = true,
-    -- Auto-detect word under cursor as default for LSP rename (when default not provided)
+    -- CRITICAL: Auto-detect word under cursor as default for LSP rename
+    -- When true, if no default provided and prompt contains "rename/new name",
+    -- automatically prefill with the word under cursor
+    -- This is the PRIMARY FIX for the empty % placeholder issue!
     auto_detect_cword = true,
     -- Override theme colors for input specifically (optional)
     theme_override = nil,
