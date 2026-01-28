@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/lite-ui.png" width="320" alt="ts-node-select logo" />
+</p>
+
 
 <h1 align="center">lite-ui.nvim</h1>
 
