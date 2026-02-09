@@ -51,6 +51,7 @@ tags
 # ============================================
 # Cleanup scripts and internal documentation
 cleanup-*.sh
+git-cleanup-toolkit.sh
 cleanup-*.md
 CLEANUP*.md
 *CLEANUP*.md
