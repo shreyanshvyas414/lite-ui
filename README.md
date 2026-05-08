@@ -12,7 +12,7 @@ Minimal, fast, dependency-free UI for modern Neovim.
 
 ```lua
 {
-  "shreyanshvyas414/lite-ui",
+  "shrey99sh/lite-ui",
   config = function()
     require("lite-ui").setup({
       theme = "kanagawa",
@@ -26,7 +26,7 @@ Minimal, fast, dependency-free UI for modern Neovim.
 
 ```lua
 use {
-  "shreyanshvyas414/lite-ui",
+  "shrey99sh/lite-ui",
   config = function()
     require("lite-ui").setup({
       theme = "kanagawa",
