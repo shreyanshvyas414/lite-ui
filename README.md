@@ -91,7 +91,7 @@ Dialog covering your code — switch to `relative = "cursor"`.
 Clone the repo, make your changes, and open a pull request. Bug fixes, features, docs — all welcome!
 
 ```bash
-git clone https://github.com/shreyanshvyas414/lite-ui.git
+git clone https://github.com/shrey99sh/lite-ui.git
 ```
 
 ---
